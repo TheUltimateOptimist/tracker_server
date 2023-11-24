@@ -69,7 +69,7 @@ type StringConfig = {
     allowed?: string[];
 }
 
-class Stringg implements Type<string>{
+export class Stringg implements Type<string>{
     default?: string;
     max?: number;
     min?: number;

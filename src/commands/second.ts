@@ -5,3 +5,7 @@ export let args = {
     secondNum: def.int(),
     text: def.string()
 }
+
+export function main() {
+    console.log('hallo');
+}

@@ -1,5 +1,7 @@
 import * as out from '@output';
-import * as fs from 'node:fs';
+import * as fs from 'fs';
+import * as commands from 'commands';
+import * as types from '@types';
 
 class Idle { }
 class TokenStarted {
@@ -63,15 +65,27 @@ interface Command {
     name: string;
 }
 
+type Module = {
+    args: Object,
+    main: () => out.Output
+}
+
 class LeafCommand implements Command {
     name: string;
+    module: Module;
     args: Object;
-    execute: (args: Object) => out.Output;
 
-    constructor(name: string, args: Object, execute: (args: Object) => out.Output) {
+    constructor(name: string, module: Module) {
         this.name = name;
-        this.args = args;
-        this.execute = execute;
+        this.module = module;
+        this.args = module.args
+    }
+
+    execute(input: Object) {
+        console.log(this.args);
+        this.module.args = input;
+        this.module.main();
+        console.log(this.args);
     }
 }
 
@@ -86,8 +100,34 @@ class NodeCommand implements Command {
 }
 
 export function buildCommandTree() {
-    let result = fs.readdirSync("src/commands");
-    console.log(result);
-    //const some = require('@commands/first/real.ts');
-    //some.main();
+    const root = new NodeCommand("", []);
+    addSubcommands(root, "");
+    //@ts-ignore
+    let comm: LeafCommand = root.subcommands[1].subcommands[0];
+    comm.execute({name: "name", age: 1, should_kill: false}); 
+}
+
+function addSubcommands(command: NodeCommand, path: string) {
+    let children = fs.readdirSync(merge(["src/commands", path]));
+    for (let childIndex in children) {
+        let child = children[childIndex];
+        if (!child.includes(".")) {
+            let nodeCommand = new NodeCommand(child, []);
+            addSubcommands(nodeCommand, merge([path, child]));
+            command.subcommands.push(nodeCommand);
+        }
+        else if (child.endsWith(".ts")) {
+            let name = child.split(".")[0];
+            let module_name = merge([path.replace("/", "_"), name], "_");
+            //@ts-ignore
+            let module = commands[module_name]; 
+            let leafCommand = new LeafCommand(name, module);
+            command.subcommands.push(leafCommand);
+        }
+    }
+}
+
+function merge(paths: string[], joinWith: string = "/") {
+    let nonEmpty = paths.filter((v, n) => v !== ""); 
+    return nonEmpty.join(joinWith);
 }

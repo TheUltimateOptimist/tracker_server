@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+if test -f src/commands.ts; then
+    rm src/commands.ts
+fi
+string_list=($(find src/commands -type f))
+for command in "${string_list[@]}"; do
+    without_extension="${command%.ts}"
+    shorter="${without_extension#src/commands/}"
+    name="${shorter//\//_}"
+    echo "export * as $name from \"../$without_extension\"" >> src/commands.ts
+done
+npx webpack && node dist/main.js
