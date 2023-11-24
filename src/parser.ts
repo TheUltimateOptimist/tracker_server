@@ -1,6 +1,6 @@
 import * as out from '@output';
 import * as fs from 'fs';
-import * as commands from 'commands';
+import * as commands from './commands';
 import * as types from '@types';
 
 class Idle { }
