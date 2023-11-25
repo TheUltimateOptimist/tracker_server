@@ -1,7 +1,7 @@
 import * as out from '@output';
 import * as fs from 'fs';
 import * as commands from './commands';
-import * as types from '@types';
+//import * as types from '@types';
 
 class Idle { }
 class TokenStarted {
@@ -18,7 +18,6 @@ function tokenize(input: string): string[] {
     let state: Idle | TokenStarted = new Idle();
     let tokens: string[] = []
     for (let char of input) {
-        console.log(char);
         if (state instanceof Idle && char !== " ") {
             let content = char;
             let endingChar = " "
@@ -98,13 +97,82 @@ class NodeCommand implements Command {
         this.subcommands = subcommands;
     }
 }
+export function interpret(input: string, command_tree: NodeCommand): string {
+    let tokens = tokenize(input);
+    let searchResult = findCommand(tokens, command_tree);
+    if (searchResult.remaining_tokens.length == 1 && searchResult.remaining_tokens[0] == "--help") {
+        //todo: return help
+        return "help"
+    }
+    if (searchResult.command instanceof NodeCommand && searchResult.remaining_tokens.length > 0) {
+        return invalidCommand(searchResult.command, searchResult.remaining_tokens)
+    }
+    else if (searchResult.command instanceof NodeCommand) {
+        //todo: return help
+        return "help"
+    }
+    else {
+       let command = searchResult.command as LeafCommand
+       return "execute leaf command"
+    }
+}
 
-export function buildCommandTree() {
+function invalidCommand(command: NodeCommand, remaining_tokens: string[]): string {
+    let names: string[] = [];
+    for (let commandIndex in command.subcommands) {
+        let subcommand = command.subcommands[commandIndex];
+        names.push(`<span>${subcommand.name}</span>`)
+    }
+    return `
+        <p>
+            <span style="color: red;">Ungültige Eingabe: '${remaining_tokens.join(" ")}'</span>
+            <br>
+            <span>Gültige Befehle sind:</span>
+            <br>
+            ${names.join("<br>")}
+        <p/> 
+        `
+}
+
+type SearchResult = {
+    command: Command,
+    remaining_tokens: string[]
+}
+
+function findCommand(tokens: string[], command_tree: NodeCommand): SearchResult {
+    let found = command_tree
+    for (let tokenIndex in tokens) {
+        let token = tokens[tokenIndex];
+        let matchedCommand = subcommandWithToken(found, token);
+        if (matchedCommand === null) {
+            //@ts-ignore
+            return { command: found, remaining_tokens: tokens.slice(tokenIndex) };
+        }
+        else if (matchedCommand instanceof LeafCommand) {
+            //@ts-ignore
+            return { command: matchedCommand, remaining_tokens: tokens.slice(tokenIndex + 1) };
+        }
+        else if (matchedCommand instanceof NodeCommand) {
+            found = matchedCommand;
+        }
+    }
+    return { command: found, remaining_tokens: [] };
+}
+
+function subcommandWithToken(root: NodeCommand, token: string): Command | null {
+    for (let subcommandIndex in root.subcommands) {
+        let subcommand = root.subcommands[subcommandIndex];
+        if (subcommand.name === token) {
+            return subcommand;
+        }
+    }
+    return null;
+}
+
+export function buildCommandTree(): NodeCommand {
     const root = new NodeCommand("", []);
     addSubcommands(root, "");
-    //@ts-ignore
-    let comm: LeafCommand = root.subcommands[1].subcommands[0];
-    comm.execute({name: "name", age: 1, should_kill: false}); 
+    return root;
 }
 
 function addSubcommands(command: NodeCommand, path: string) {
@@ -120,7 +188,7 @@ function addSubcommands(command: NodeCommand, path: string) {
             let name = child.split(".")[0];
             let module_name = merge([path.replace("/", "_"), name], "_");
             //@ts-ignore
-            let module = commands[module_name]; 
+            let module = commands[module_name];
             let leafCommand = new LeafCommand(name, module);
             command.subcommands.push(leafCommand);
         }
@@ -128,6 +196,6 @@ function addSubcommands(command: NodeCommand, path: string) {
 }
 
 function merge(paths: string[], joinWith: string = "/") {
-    let nonEmpty = paths.filter((v, n) => v !== ""); 
+    let nonEmpty = paths.filter((v, n) => v !== "");
     return nonEmpty.join(joinWith);
 }
