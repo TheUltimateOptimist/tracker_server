@@ -41,25 +41,6 @@ function tokenize(input: string): string[] {
     return tokens;
 }
 
-class PosParam {
-    name: string;
-    type: string;
-
-    constructor(name: string, type: string) {
-        this.name = name;
-        this.type = type;
-    }
-}
-
-class OptParam extends PosParam {
-    defaultValue: string | undefined;
-
-    constructor(name: string, type: string, defaultValue: string | undefined) {
-        super(name, type);
-        this.defaultValue = defaultValue;
-    }
-}
-
 interface Command {
     name: string;
 }
